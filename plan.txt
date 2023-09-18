@@ -1,0 +1,24 @@
+else if multiple_enemies_close:
+    if invincible_star_available:
+        Move right + Run
+
+else if approaching_pit:
+    Move right + Jump + Run
+
+else if distance_to_coins <= 20 and path_is_safe:
+    Move right to get coins
+
+else if high_platform_nearby:
+    Move right + Jump to get onto platform
+
+else if power_up_nearby:
+    Move right toward power-up
+
+else if enemy_above_mario:
+    Move left to avoid enemy above
+
+else if mario_low_health:
+    Move left to avoid enemies and seek safety
+
+else:
+    Move right
