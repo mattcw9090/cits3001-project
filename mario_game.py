@@ -31,7 +31,9 @@ image_files = {
         "koopa": ["koopaA.png", "koopaB.png"],
     },
     "block": {
-        "ground_block": ["block1.png", "block2.png", "block3.png", "block4.png"],
+        "brick_block": ["block1.png"],
+        "ground_block": ["block2.png", "block3.png"],
+        "stair_block": ["block4.png"],
         "question_block": ["questionA.png", "questionB.png", "questionC.png"],
         "pipe": ["pipe_upper_section.png", "pipe_lower_section.png"],
     },
@@ -42,7 +44,8 @@ image_files = {
     }
 }
 
-
+# From Elements:
+# Recognises Images on the screen and outputs the location (dictionary of category key)
 def _get_template(filename):
     image = cv.imread(filename)
     assert image is not None, f"File {filename} does not exist."
@@ -306,6 +309,24 @@ class Mushroom:
         self.right_x = x + width
         self.bottom_y = y + height
 
+class Stair_Block:
+    def __init__(self, x, y, width, height):
+        self.left_x = x
+        self.top_y = y
+        self.width = width
+        self.height = height
+        self.right_x = x + width
+        self.bottom_y = y + height
+
+class Brick_Block:
+    def __init__(self, x, y, width, height):
+        self.left_x = x
+        self.top_y = y
+        self.width = width
+        self.height = height
+        self.right_x = x + width
+        self.bottom_y = y + height
+
 
 high_jump_counter = 0
 
@@ -405,6 +426,23 @@ def decide_action(screen, info_dict):
             for mushroom in object_locations.get("item").get("mushroom"):
                 mushrooms_list.append(
                     Mushroom(mushroom[0][0], mushroom[0][1], mushroom[1][0], mushroom[1][1]))
+    
+    # Intialise stair_block instances
+    stair_blocks_list = []
+    if object_locations.get("block"):
+        if object_locations.get("block").get("stair_block"):
+            for stair_block in object_locations.get("block").get("stair_block"):
+                stair_blocks_list.append(
+                    Stair_Block(stair_block[0][0], stair_block[0][1], stair_block[1][0], stair_block[1][1]))
+                
+     # Intialise brick_block instances
+    brick_blocks_list = []
+    if object_locations.get("block"):
+        if object_locations.get("block").get("brick_block"):
+            for brick_block in object_locations.get("block").get("brick_block"):
+                brick_blocks_list.append(
+                    Brick_Block(brick_block[0][0], brick_block[0][1], brick_block[1][0], brick_block[1][1]))
+                
     ################ DEBUGGING PURPOSES ################
     if PRINT_GRID and step % 100 == 0:
         print_grid(screen, object_locations)
@@ -439,6 +477,22 @@ def decide_action(screen, info_dict):
             for question_block in question_blocks_list:
                 print(
                     f"\tQuestion Block: {(question_block.left_x, question_block.top_y)}), {(question_block.width, question_block.height)}")
+        else:
+            print("\tNone")
+
+        print("\nSTAIR BLOCKS")
+        if stair_blocks_list:
+            for stair_block in stair_blocks_list:
+                print(
+                    f"\tStair Block: {(stair_block.left_x, stair_block.top_y)}), {(stair_block.width, stair_block.height)}")
+        else:
+            print("\tNone")
+        
+        print("\nBRICK BLOCKS")
+        if brick_blocks_list:
+            for brick_block in brick_blocks_list:
+                print(
+                    f"\tBrick Block: {(brick_block.left_x, brick_block.top_y)}), {(brick_block.width, brick_block.height)}")
         else:
             print("\tNone")
 
