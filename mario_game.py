@@ -268,6 +268,12 @@ class Ground_Block:
         self.bottom_y = y + height
 
 
+class Pitfall:
+    def __init__(self, x, width):
+        self.left_x = x
+        self.width = width
+
+
 class Question_Block:
     def __init__(self, x, y, width, height):
         self.left_x = x
@@ -340,6 +346,40 @@ def decide_action(screen, info_dict):
                 ground_blocks_list.append(
                     Ground_Block(ground_block[0][0], ground_block[0][1], ground_block[1][0],
                                  ground_block[1][1]))
+
+    # Initialise pitfall instances
+    pitfalls_list = []
+    top_layer_blocks = [block for block in ground_blocks_list if block.top_y == 208]
+    bottom_layer_blocks = [block for block in ground_blocks_list if block.top_y == 224]
+    top_layer_gaps = []
+    bottom_layer_gaps = []
+
+    # Iterate through the top_layer_blocks and find gaps
+    for i in range(len(top_layer_blocks) - 1):
+        current_block = top_layer_blocks[i]
+        next_block = top_layer_blocks[i + 1]
+
+        # Check if there is a gap between the current and next block
+        if next_block.left_x != current_block.right_x:
+            top_layer_gaps.append((current_block.right_x, next_block.left_x))
+
+    # Iterate through the bottom_layer_blocks and find gaps
+    for i in range(len(bottom_layer_blocks) - 1):
+        current_block = bottom_layer_blocks[i]
+        next_block = bottom_layer_blocks[i + 1]
+
+        # Check if there is a gap between the current and next block
+        if next_block.left_x != current_block.right_x:
+            bottom_layer_gaps.append((current_block.right_x, next_block.left_x))
+
+    if top_layer_gaps and bottom_layer_gaps:
+        for top_start, top_end in top_layer_gaps:
+            for bottom_start, bottom_end in bottom_layer_gaps:
+                if (top_start >= bottom_start and top_end <= bottom_end) or \
+                        (top_start >= bottom_start and top_start <= bottom_end) or \
+                        (top_end >= bottom_start and top_end <= bottom_end):
+                    pitfalls_list.append(Pitfall(top_start, top_end - top_start))
+                    break
 
     # Initialise question_block instances
     question_blocks_list = []
@@ -446,6 +486,15 @@ def decide_action(screen, info_dict):
                     return RIGHT_A
                 else:
                     return RIGHT_A
+
+    # If there is at least one pitfall in the screen, filter out pitfalls that are behind mario
+    if pitfalls_list:
+        pitfalls_in_front = [pitfall for pitfall in pitfalls_list if mario.right_x <= pitfall.left_x]
+
+        # If there is at least one pipe that is within 30 pixels from mario and mario is on the ground
+        for pitfall in pitfalls_in_front:
+            if pitfall.left_x - mario.right_x <= 20 and mario.is_on_ground():
+                return RIGHT_A
 
     return RIGHT
 
