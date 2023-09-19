@@ -549,6 +549,21 @@ def decide_action(screen, info_dict):
         for pitfall in pitfalls_in_front:
             if pitfall.left_x - mario.right_x <= 20 and mario.is_on_ground():
                 return RIGHT_A
+    
+    # If there is at least one stair_block in the screen, filter out stair_blocks that are behind mario
+    if stair_blocks_list:
+        stairs_in_front = [stair_block for stair_block in stair_blocks_list if mario.right_x <= stair_block.left_x]
+
+        # If there is at least one pipe that is within 30 pixels from mario and mario is on the ground
+        for stair_block in stairs_in_front:
+            if stair_block.left_x - mario.right_x <= 20 and -2 <= stair_block.bottom_y - mario.bottom_y <= 2:
+
+                # If pipe height is greater than mario's typical jump height
+                # if stair_block.height > 60:
+                #     high_jump_counter = 2
+                #     return RIGHT_A
+                # else:
+                return RIGHT_A
 
     return RIGHT
 
