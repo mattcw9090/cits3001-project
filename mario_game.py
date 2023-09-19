@@ -556,14 +556,13 @@ def decide_action(screen, info_dict):
 
         # If there is at least one pipe that is within 30 pixels from mario and mario is on the ground
         for stair_block in stairs_in_front:
-            if stair_block.left_x - mario.right_x <= 20 and -2 <= stair_block.bottom_y - mario.bottom_y <= 2:
+            if stair_block.left_x - mario.right_x <= 10 and -2 <= stair_block.bottom_y - mario.bottom_y <= 2:
 
                 # If mutiple stairs on same x co-ord
                 left_x_value_to_be_compared = stair_block.left_x
                 consecutive_vertical = [stair_block for stair_block in stairs_in_front if stair_block.left_x == left_x_value_to_be_compared]
                 if len(consecutive_vertical) > 1:
                     # Mario Jumps Higher
-                    height = consecutive_vertical[0]
                     high_jump_counter = 2
                     return RIGHT_A
                 return RIGHT_A
