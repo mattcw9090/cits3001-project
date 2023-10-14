@@ -33,11 +33,47 @@ class TrainAndLoggingCallback(BaseCallback):
             self.model.save(model_path)
 
         return True
+class MarioRewardShaping(gym.Wrapper):
+    def __init__(self, env):
+        self.env = env
+        self.prev_x_position = 0
+        self.prev_coins = 0
+
+    def reset(self, **kwargs):
+        self.prev_x_position = 0
+        self.prev_coins = 0
+        return self.env.reset(**kwargs)
+
+    def step(self, action):
+        state, reward, done, truncated, info = self.env.step(action)
+
+        # Encourage forward movement
+        x_position = info['x_pos']
+        if x_position > self.prev_x_position:
+            reward += 1
+        self.prev_x_position = x_position
+
+        # Add reward for getting coins
+        if 'coins' in info and info['coins'] > self.prev_coins:
+            reward += 5
+        self.prev_coins = info.get('coins', self.prev_coins)
+
+        # Penalize Mario for death
+        if done and 'life' in info and info['life'] == 0:
+            reward -= 50
+
+        # Penalize not progressing
+        if x_position == self.prev_x_position:
+            reward -= 0.1
+
+        return state, reward, done, truncated, info
 
 
 env = gym.make('SuperMarioBros-v0', apply_api_compatibility=True)
+env = MarioRewardShaping(env)
 env = Monitor(env)
 env = JoypadSpace(env, SIMPLE_MOVEMENT)
+JoypadSpace.reset = lambda self, **kwargs: self.env.reset(**kwargs)
 
 if os.path.exists(MODEL_DIR):  # If train folder exists
     zip_files = [file for file in os.listdir(MODEL_DIR) if file.endswith('.zip')]
@@ -56,7 +92,5 @@ else:  # If train folder doesn't exist
 callback_instance = TrainAndLoggingCallback(env=env, check_freq=STEPS_TO_SAVE_AND_LOG_MODEL, save_path=MODEL_DIR)
 
 while True:
-    done = True
     env.reset()
-    JoypadSpace.reset = lambda self, **kwargs: self.env.reset(**kwargs)
     model.learn(total_timesteps=TIMESTEPS, callback=callback_instance, reset_num_timesteps=False)
