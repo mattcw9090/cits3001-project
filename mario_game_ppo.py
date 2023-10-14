@@ -35,37 +35,52 @@ class TrainAndLoggingCallback(BaseCallback):
         return True
 class MarioRewardShaping(gym.Wrapper):
     def __init__(self, env):
-        self.env = env
-        self.prev_x_position = 0
-        self.prev_coins = 0
+        super().__init__(env)
+        self.prev_info = {}
 
     def reset(self, **kwargs):
-        self.prev_x_position = 0
-        self.prev_coins = 0
+        self.prev_info = {}
         return self.env.reset(**kwargs)
 
     def step(self, action):
         state, reward, done, truncated, info = self.env.step(action)
 
         # Encourage forward movement
-        x_position = info['x_pos']
-        if x_position > self.prev_x_position:
+        if info['x_pos'] > self.prev_info.get('x_pos', 0):
             reward += 1
-        self.prev_x_position = x_position
 
         # Add reward for getting coins
-        if 'coins' in info and info['coins'] > self.prev_coins:
+        if info['coins'] > self.prev_info.get('coins', 0):
             reward += 5
-        self.prev_coins = info.get('coins', self.prev_coins)
 
-        # Penalize Mario for death
-        if done and 'life' in info and info['life'] == 0:
+        # Reward for level completion
+        if info['flag_get']:
+            reward += 100
+
+        # Penalty for taking damage
+        if self.prev_info.get('status', '') == 'big' and info['status'] == 'small':
+            reward -= 10
+
+        # Reward for getting a power-up
+        if self.prev_info.get('status', '') == 'small' and info['status'] == 'big':
+            reward += 10
+
+        # Time-based penalty
+        reward -= 0.05
+
+        # Penalty for falling into pits
+        if info['y_pos'] - self.prev_info.get('y_pos', info['y_pos']) > 10:
+            reward -= 5
+
+        # Penalize for death
+        if info['life'] < self.prev_info.get('life', 2):
             reward -= 50
 
         # Penalize not progressing
-        if x_position == self.prev_x_position:
+        if info['x_pos'] == self.prev_info.get('x_pos', 0):
             reward -= 0.1
 
+        self.prev_info = info
         return state, reward, done, truncated, info
 
 
