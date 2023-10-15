@@ -5,7 +5,8 @@ import gym
 from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.vec_env import VecFrameStack, DummyVecEnv
+from gym.wrappers import GrayScaleObservation
 import os
 import numpy as np
 import csv
@@ -21,6 +22,7 @@ LEARNING_RATE = 1e-4
 reward_sum = 0
 reward_counts = 0
 mean_rewards_graph = []
+
 
 class TrainAndLoggingCallback(BaseCallback):
     def __init__(self, env, check_freq, save_path, verbose=0):
@@ -72,31 +74,15 @@ class MarioRewardShaping(gym.Wrapper):
 
         # Add reward for getting coins
         if info['coins'] > self.prev_info.get('coins', 0):
-            reward += 5
+            reward += 1
 
         # Reward for level completion
         if info['flag_get']:
-            reward += 1000
-
-        # Penalty for taking damage
-        if self.prev_info.get('status', '') == 'big' and info['status'] == 'small':
-            reward -= 5
-
-        # Penalty for death
-        if self.prev_info.get('life', 2) > info['life']:
-            reward -= 50
+            reward += 15
 
         # Reward for getting a power-up
         if self.prev_info.get('status', '') == 'small' and info['status'] == 'big':
-            reward += 10
-
-        # Penalty for falling into pits
-        if info.get('y_pos', 79) < 77:
-            reward -= 5
-
-        # Time penalty
-        reward -= 1
-
+            reward += 2
 
         self.prev_info = info
 
@@ -112,22 +98,29 @@ env = Monitor(env)
 env = JoypadSpace(env, SIMPLE_MOVEMENT)
 JoypadSpace.reset = lambda self, **kwargs: self.env.reset(**kwargs)
 
+# Grayscale Conversion
+env = GrayScaleObservation(env, keep_dim=True)
+
+# Vectorize and Frame Stack
+vec_env = DummyVecEnv([lambda: env])  # Vectorize environment
+vec_env = VecFrameStack(vec_env, n_stack=4)  # Stack 4 frames
+
 if os.path.exists(MODEL_DIR):  # If train folder exists
     zip_files = [file for file in os.listdir(MODEL_DIR) if file.endswith('.zip')]
     if zip_files:  # If something in train folder
         largest_zip_file = max(zip_files, key=lambda file: int(file.split('_')[0]))
         model_path = os.path.join(MODEL_DIR, largest_zip_file)
-        model = PPO.load(model_path, env=env)
+        model = PPO.load(model_path, env=vec_env)
         print("LOAD SUCCESSFUL\n")
     else:  # If nothing in train folder
-        model = PPO("CnnPolicy", env, learning_rate=LEARNING_RATE, tensorboard_log=LOG_DIR)
+        model = PPO("CnnPolicy", vec_env, learning_rate=LEARNING_RATE, tensorboard_log=LOG_DIR)
 else:  # If train folder doesn't exist
     os.mkdir(MODEL_DIR)
-    model = PPO("CnnPolicy", env, learning_rate=LEARNING_RATE, tensorboard_log=LOG_DIR)
+    model = PPO("CnnPolicy", vec_env, learning_rate=LEARNING_RATE, tensorboard_log=LOG_DIR)
 
 # Create the callback
-callback_instance = TrainAndLoggingCallback(env=env, check_freq=STEPS_TO_SAVE_AND_LOG_MODEL, save_path=MODEL_DIR)
+callback_instance = TrainAndLoggingCallback(env=vec_env, check_freq=STEPS_TO_SAVE_AND_LOG_MODEL, save_path=MODEL_DIR)
 
 while True:
-    env.reset()
+    vec_env.reset()
     model.learn(total_timesteps=TIMESTEPS, callback=callback_instance, reset_num_timesteps=False)
