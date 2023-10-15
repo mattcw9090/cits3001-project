@@ -12,18 +12,18 @@ import os
 import numpy as np
 import csv
 
-# CONSTANTS
-MODEL_DIR = "./train"
-
-# 1. Set up your environment
 env = gym.make('SuperMarioBros-v0', apply_api_compatibility=True, render_mode='human')
 env = JoypadSpace(env, SIMPLE_MOVEMENT)
 JoypadSpace.reset = lambda self, **kwargs: self.env.reset(**kwargs)
+env = GrayScaleObservation(env, keep_dim=True)
+
+# Vectorize and Frame Stack
+vec_env = DummyVecEnv([lambda: env])
+vec_env = VecFrameStack(vec_env, n_stack=4)
 
 # Assuming there's a model saved; otherwise, add a check
-model = PPO.load('./train/375000_model.zip', env=env)
+model = PPO.load('./train/235000_model.zip', env=vec_env)
 
-vec_env = model.get_env()
 obs = vec_env.reset()
 
 for step in range(50000):
